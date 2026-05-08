@@ -44,10 +44,9 @@ export function RegisterPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={onSubmit}>
-        <p className="eyebrow">New account</p>
+        
         <h1>Register for CarSync</h1>
-        <p className="muted">Create a tenant-aware dealership workspace and invite your first operator.</p>
-
+       
         {error ? <div className="error-banner">{error}</div> : null}
 
         <div className="form-grid">
@@ -65,11 +64,11 @@ export function RegisterPage() {
           </label>
           <label className="field">
             <span>Email</span>
-            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" required />
+            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email"    autoComplete="new-email" required />
           </label>
           <label className="field">
             <span>Password</span>
-            <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" required />
+            <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" autoComplete="new-password" required />
           </label>
           <label className="field">
             <span>Confirm password</span>

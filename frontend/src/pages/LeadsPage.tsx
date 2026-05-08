@@ -125,8 +125,7 @@ export function LeadsPage() {
     <AppShell>
       <PageHeader
         title="Leads"
-        subtitle="Manage the full sales pipeline from one workspace without losing tenant isolation."
-        sideLabel="Lead desk"
+        
         sideValue={`${snapshot?.stats[0]?.value ?? "0"} open leads`}
       />
       {snapshot ? <StatGrid stats={snapshot.stats} /> : null}

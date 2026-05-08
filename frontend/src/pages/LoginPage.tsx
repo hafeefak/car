@@ -10,12 +10,14 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
       navigate("/", { replace: true });
     }
   }, [loading, user, navigate]);
 
+  // Clear fields on mount (optional)
   useEffect(() => {
     setEmail("");
     setPassword("");
@@ -39,21 +41,20 @@ export function LoginPage() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={onSubmit} autoComplete="off">
-        <p className="eyebrow">Dealer access</p>
-        <h1>Login to CarSync</h1>
-        <p className="muted">
-          Use your account to access leads, inventory, follow-ups, and bookings.
-        </p>
+        <h1>CarSync</h1>
 
-        {error ? <div className="error-banner">{error}</div> : null}
+        {error && <div className="error-banner">{error}</div>}
 
         <label className="field">
           <span>Email</span>
           <input
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
             type="email"
-            autoComplete="off"
+              
+
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          
+            autoComplete="new-email"
             required
           />
         </label>
@@ -61,15 +62,16 @@ export function LoginPage() {
         <label className="field">
           <span>Password</span>
           <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
             type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+           
             autoComplete="new-password"
             required
           />
         </label>
 
-        <button className="primary-button" type="submit" disabled={saving}>
+        <button className="primary-button " type="submit" disabled={saving}>
           {saving ? "Signing in..." : "Login"}
         </button>
 

@@ -7,7 +7,7 @@ export function StatGrid({ stats }: { stats: Stat[] }) {
         <article key={stat.label} className="stat-card">
           <span>{stat.label}</span>
           <strong>{stat.value}</strong>
-          <p>{stat.hint}</p>
+       
         </article>
       ))}
     </section>

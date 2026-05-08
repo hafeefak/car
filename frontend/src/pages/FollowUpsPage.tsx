@@ -16,7 +16,7 @@ export function FollowUpsPage() {
     <AppShell>
       <PageHeader
         title="Follow-ups"
-        subtitle="A simple reminder queue protects conversion rates and keeps the small dealer team disciplined."
+        
       />
       {error ? <div className="error-banner">{error}</div> : null}
       <section className="panel">

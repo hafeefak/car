@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { PropsWithChildren } from "react";
 import { useAuth } from "../auth/AuthProvider";
 
+
 const navItems = [
   { to: "/", label: "Dashboard" },
   { to: "/leads", label: "Leads" },
@@ -14,14 +15,15 @@ export function AppShell({ children }: PropsWithChildren) {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+ 
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div>
-          <p className="eyebrow">CarSync CRM</p>
+         
           <h1>{user?.dealershipName ?? "Dealer cockpit"}</h1>
-          <p className="muted">Shared-schema multi-tenant workspace</p>
+         
         </div>
 
         <nav className="nav-list">

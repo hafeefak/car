@@ -76,7 +76,7 @@ export function BookingsPage() {
     <AppShell>
       <PageHeader
         title="Bookings"
-        subtitle="Convert qualified leads into linked bookings so each deal has a clear path from interest to delivery."
+        
       />
       {error ? <div className="error-banner">{error}</div> : null}
       <section className="panel">

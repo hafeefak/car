@@ -17,7 +17,7 @@ export function DashboardPage() {
     <AppShell>
       <PageHeader
         title="Dealer dashboard"
-        subtitle="A focused React + Spring Boot cockpit for second-hand car dealers with tenant-safe data access."
+        
         sideLabel="Cash Inflow"
         sideValue={snapshot?.revenue ?? "Loading..."}
       />

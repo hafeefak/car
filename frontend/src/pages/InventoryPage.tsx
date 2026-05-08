@@ -129,7 +129,7 @@ export function InventoryPage() {
     <AppShell>
       <PageHeader
         title="Inventory"
-        subtitle="Manage vehicle stock from one workspace with tenant-scoped stock codes and same-day edit/delete workflows."
+       
         sideLabel="Stock control"
         sideValue={`${snapshot?.stats[1]?.value ?? "0"} cars in stock`}
       />

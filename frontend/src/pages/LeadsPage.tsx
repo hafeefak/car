@@ -3,6 +3,7 @@ import { AppShell } from "../components/AppShell";
 import { InputField, SelectField, TextareaField } from "../components/FormField";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { SearchBar } from "../components/SearchBar";
 import { StatGrid } from "../components/StatGrid";
 import { api } from "../lib/api";
 import type { Lead, LeadPayload, Snapshot } from "../types";
@@ -29,6 +30,7 @@ export function LeadsPage() {
   const [form, setForm] = useState<LeadPayload>(defaultLeadForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const load = async () => {
     const [snapshotData, leadData] = await Promise.all([api.snapshot(), api.leads()]);
@@ -39,6 +41,14 @@ export function LeadsPage() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
   }, []);
+
+  const filteredLeads = leads.filter(lead => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (lead.customerName?.toLowerCase().includes(term) ?? false) ||
+           (lead.phone?.toLowerCase().includes(term) ?? false) ||
+           (lead.interest?.toLowerCase().includes(term) ?? false);
+  });
 
   useEffect(() => {
     if (!selectedLead) {
@@ -135,14 +145,15 @@ export function LeadsPage() {
         <div className="panel-header">
           <div>
             <h3>Current pipeline</h3>
-            <p>{leads.length} records</p>
+            <p>{filteredLeads.length} records</p>
           </div>
+          <SearchBar value={searchTerm} onChange={setSearchTerm} />
           <button className="primary-button" type="button" onClick={openCreateModal}>
             New Lead
           </button>
         </div>
         <div className="table-list">
-          {leads.map((lead) => (
+          {filteredLeads.map((lead) => (
             <div key={lead.id} className="table-row">
               <div>
                 <strong>{lead.customerName}</strong>
@@ -165,12 +176,15 @@ export function LeadsPage() {
             </div>
           ))}
         </div>
+        {searchTerm && filteredLeads.length === 0 && (
+          <p className="muted">No matching records found</p>
+        )}
       </section>
 
       <Modal
         open={modalOpen}
         title={selectedLead ? "Edit lead" : "Add new lead"}
-        subtitle="Capture buyer details in a popup and keep the main workspace focused on the listing."
+        
         onClose={closeModal}
         actions={
           <>

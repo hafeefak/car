@@ -60,6 +60,72 @@ carsync-app/
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8080`
 
+## Deploy
+
+The repo now includes a production Docker deployment path:
+
+- [docker-compose.prod.yml](</C:/SHANID/business project/carSync/carsync-app/docker-compose.prod.yml>)
+- [backend/Dockerfile](</C:/SHANID/business project/carSync/carsync-app/backend/Dockerfile>)
+- [frontend/Dockerfile](</C:/SHANID/business project/carSync/carsync-app/frontend/Dockerfile>)
+- [frontend/nginx.conf](</C:/SHANID/business project/carSync/carsync-app/frontend/nginx.conf>)
+- [.env.production.example](</C:/SHANID/business project/carSync/carsync-app/.env.production.example>)
+
+Production architecture:
+
+- `postgres`: PostgreSQL database
+- `backend`: Spring Boot API
+- `frontend`: Nginx serving the Vite build and proxying `/api` to the backend
+
+Why this setup helps:
+
+- one public frontend port
+- React Router works in production
+- `/api` stays on the same origin through Nginx
+- no separate frontend API URL is required in production by default
+
+### Production Steps
+
+1. Copy the example env file
+
+```powershell
+cd "C:\SHANID\business project\carSync\carsync-app"
+Copy-Item .env.production.example .env
+```
+
+2. Update `.env`
+
+Minimum values to change:
+
+- `POSTGRES_PASSWORD`
+- `CARSYNC_JWT_SECRET`
+- `CARSYNC_CORS_ALLOWED_ORIGINS`
+
+3. Build and start the stack
+
+```powershell
+docker compose -f docker-compose.prod.yml --env-file .env up --build -d
+```
+
+4. Open the app
+
+- Frontend: `http://your-server`
+- API through frontend proxy: `http://your-server/api/...`
+
+5. Stop the production stack
+
+```powershell
+docker compose -f docker-compose.prod.yml --env-file .env down
+```
+
+### Production Notes
+
+- Set a strong `CARSYNC_JWT_SECRET`
+- Use a real domain for `CARSYNC_CORS_ALLOWED_ORIGINS`
+- Keep `POSTGRES_PASSWORD` out of Git
+- Flyway migrations run automatically on backend startup
+- The frontend container serves the built app through Nginx
+- The backend is not exposed publicly in the compose file; the frontend proxies requests to it
+
 ## Bring Up Each Service
 
 Start PostgreSQL:

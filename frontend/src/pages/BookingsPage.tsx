@@ -3,6 +3,7 @@ import { AppShell } from "../components/AppShell";
 import { InputField, SelectField } from "../components/FormField";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { SearchBar } from "../components/SearchBar";
 import { api } from "../lib/api";
 import type { Booking, BookingPayload, Lead, Vehicle } from "../types";
 
@@ -25,6 +26,7 @@ export function BookingsPage() {
   const [form, setForm] = useState<BookingPayload>(defaultForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const load = async () => {
     const [bookingData, leadData, vehicleData] = await Promise.all([api.bookings(), api.leads(), api.vehicles()]);
@@ -36,6 +38,14 @@ export function BookingsPage() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
   }, []);
+
+  const filteredBookings = bookings.filter(booking => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (booking.customerName?.toLowerCase().includes(term) ?? false) ||
+           (booking.vehicleTitle?.toLowerCase().includes(term) ?? false) ||
+           (booking.leadInterest?.toLowerCase().includes(term) ?? false);
+  });
 
   const openCreateModal = () => {
     setError("");
@@ -83,14 +93,15 @@ export function BookingsPage() {
         <div className="panel-header">
           <div>
             <h3>Revenue view</h3>
-            <span>{bookings.length} bookings</span>
+            <span>{filteredBookings.length} bookings</span>
           </div>
+          <SearchBar value={searchTerm} onChange={setSearchTerm} />
           <button className="primary-button" type="button" onClick={openCreateModal}>
             New Booking
           </button>
         </div>
         <div className="table-list">
-          {bookings.map((booking) => (
+          {filteredBookings.map((booking) => (
             <div key={booking.id} className="table-row">
               <div>
                 <strong>{booking.customerName}</strong>
@@ -105,12 +116,15 @@ export function BookingsPage() {
             </div>
           ))}
         </div>
+        {searchTerm && filteredBookings.length === 0 && (
+          <p className="muted">No matching records found</p>
+        )}
       </section>
 
       <Modal
         open={modalOpen}
         title="Create booking"
-        subtitle="Pick an active lead and convert it into a booking against a vehicle."
+        
         onClose={closeModal}
         actions={
           <>

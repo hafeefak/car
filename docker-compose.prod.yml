@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: carsync-postgres-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-carsync_crm}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: carsync-backend-prod
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-carsync_crm}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      CARSYNC_JWT_SECRET: ${CARSYNC_JWT_SECRET}
+      CARSYNC_JWT_EXPIRATION_DAYS: ${CARSYNC_JWT_EXPIRATION_DAYS:-30}
+      CARSYNC_CORS_ALLOWED_ORIGINS: ${CARSYNC_CORS_ALLOWED_ORIGINS:-http://localhost}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: carsync-frontend-prod
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:

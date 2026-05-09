@@ -3,6 +3,7 @@ import { AppShell } from "../components/AppShell";
 import { InputField, SelectField } from "../components/FormField";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { SearchBar } from "../components/SearchBar";
 import { StatGrid } from "../components/StatGrid";
 import { api } from "../lib/api";
 import type { Snapshot, Vehicle, VehiclePayload } from "../types";
@@ -32,6 +33,7 @@ export function InventoryPage() {
   const [form, setForm] = useState<VehiclePayload>(defaultVehicleForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const load = async () => {
     const [snapshotData, vehicleData] = await Promise.all([api.snapshot(), api.vehicles()]);
@@ -42,6 +44,15 @@ export function InventoryPage() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
   }, []);
+
+  const filteredVehicles = vehicles.filter(vehicle => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (vehicle.title?.toLowerCase().includes(term) ?? false) ||
+           (vehicle.make?.toLowerCase().includes(term) ?? false) ||
+           (vehicle.model?.toLowerCase().includes(term) ?? false) ||
+           (vehicle.stockCode?.toLowerCase().includes(term) ?? false);
+  });
 
   useEffect(() => {
     if (!selectedVehicle) {
@@ -140,14 +151,15 @@ export function InventoryPage() {
         <div className="panel-header">
           <div>
             <h3>Current stock</h3>
-            <p>{vehicles.length} records</p>
+            <p>{filteredVehicles.length} records</p>
           </div>
+          <SearchBar value={searchTerm} onChange={setSearchTerm} />
           <button className="primary-button" type="button" onClick={openCreateModal}>
             New Vehicle
           </button>
         </div>
         <div className="table-list">
-          {vehicles.map((vehicle) => (
+          {filteredVehicles.map((vehicle) => (
             <div key={vehicle.id} className="table-row inventory-row">
               <div>
                 <strong>{vehicle.stockCode}</strong>
@@ -170,12 +182,15 @@ export function InventoryPage() {
             </div>
           ))}
         </div>
+        {searchTerm && filteredVehicles.length === 0 && (
+          <p className="muted">No matching records found</p>
+        )}
       </section>
 
       <Modal
         open={modalOpen}
         title={selectedVehicle ? "Edit vehicle" : "Add new vehicle"}
-        subtitle="Use the popup editor and keep inventory fully visible in the main workspace."
+        
         onClose={closeModal}
         actions={
           <>

@@ -1,7 +1,7 @@
 import type { AuthResponse, Booking, BookingPayload, FollowUp, Lead, LeadPayload, Snapshot, Stat, User, Vehicle, VehiclePayload } from "../types";
 import { clearToken, getToken } from "./storage";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8080" : "");
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 type RawSnapshot = {

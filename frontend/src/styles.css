@@ -446,6 +446,40 @@ textarea {
   color: #9f1d35;
 }
 
+.search-bar {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--ink-soft);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(197, 125, 44, 0.2);
+  outline: none;
+}
+
 .error-banner {
   background: #fff1f2;
   border: 1px solid #fecdd3;

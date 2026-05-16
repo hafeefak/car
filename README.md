@@ -126,7 +126,7 @@ docker compose -f docker-compose.prod.yml --env-file .env down
 - The frontend container serves the built app through Nginx
 - The backend is not exposed publicly in the compose file; the frontend proxies requests to it
 
-## Bring Up Each Service
+## Manual Local Run
 
 Start PostgreSQL:
 
@@ -162,6 +162,17 @@ Quick checks after startup:
 - Frontend should open at `http://localhost:5173`
 - Backend should answer at `http://localhost:8080`
 - `GET http://localhost:8080/api/auth/me` should return `403` before login
+
+Manual stop order:
+
+1. Stop the frontend terminal with `Ctrl + C`
+2. Stop the backend terminal with `Ctrl + C`
+3. Stop PostgreSQL with:
+
+```powershell
+cd "C:\SHANID\business project\carSync\carsync-app\backend"
+docker compose down
+```
 
 ## Run The Backend
 
@@ -358,3 +369,5 @@ The stack was brought up and checked with these live results:
 - Backend responded on `http://localhost:8080`
 - PostgreSQL container was running on host port `5433`
 - `GET /api/auth/me` returned `403` without auth, confirming the API was up and enforcing security
+
+https://www.gitdgtl.com/career.html

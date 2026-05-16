@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { InputField, SelectField } from "../components/FormField";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
 import { SearchBar } from "../components/SearchBar";
 import { StatGrid } from "../components/StatGrid";
 import { api } from "../lib/api";
-import type { Snapshot, Vehicle, VehiclePayload } from "../types";
+import type { Snapshot, Stat, Vehicle, VehiclePayload } from "../types";
 
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -29,10 +30,12 @@ export function InventoryPage() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [vehiclePendingDelete, setVehiclePendingDelete] = useState<Vehicle | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<VehiclePayload>(defaultVehicleForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const load = async () => {
@@ -53,6 +56,20 @@ export function InventoryPage() {
            (vehicle.model?.toLowerCase().includes(term) ?? false) ||
            (vehicle.stockCode?.toLowerCase().includes(term) ?? false);
   });
+
+  const availableVehicleCount = vehicles.filter((vehicle) => vehicle.rawStatus === "AVAILABLE").length;
+
+  const inventoryStats: Stat[] | null = snapshot
+    ? [
+        snapshot.stats[0],
+        {
+          label: "Available vehicles",
+          value: String(availableVehicleCount),
+          hint: `${vehicles.length - availableVehicleCount} reserved or sold`
+        },
+        ...snapshot.stats.slice(2)
+      ]
+    : null;
 
   useEffect(() => {
     if (!selectedVehicle) {
@@ -120,19 +137,23 @@ export function InventoryPage() {
     setForm(defaultVehicleForm());
   };
 
-  const removeVehicle = async (vehicleId: number) => {
-    if (!window.confirm("Delete this vehicle?")) {
+  const removeVehicle = async () => {
+    if (!vehiclePendingDelete) {
       return;
     }
 
+    setDeleting(true);
     try {
-      await api.deleteVehicle(vehicleId);
-      if (selectedVehicle?.id === vehicleId) {
+      await api.deleteVehicle(vehiclePendingDelete.id);
+      if (selectedVehicle?.id === vehiclePendingDelete.id) {
         setSelectedVehicle(null);
       }
+      setVehiclePendingDelete(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -142,9 +163,9 @@ export function InventoryPage() {
         title="Inventory"
        
         sideLabel="Stock control"
-        sideValue={`${snapshot?.stats[1]?.value ?? "0"} cars in stock`}
+        sideValue={`${vehicles.length} cars in stock`}
       />
-      {snapshot ? <StatGrid stats={snapshot.stats} /> : null}
+      {inventoryStats ? <StatGrid stats={inventoryStats} /> : null}
       {error ? <div className="error-banner">{error}</div> : null}
 
       <section className="panel">
@@ -175,7 +196,7 @@ export function InventoryPage() {
                 <button className="ghost-button" type="button" onClick={() => openEditModal(vehicle)}>
                   Edit
                 </button>
-                <button className="ghost-button danger" type="button" onClick={() => removeVehicle(vehicle.id)}>
+                <button className="ghost-button danger" type="button" onClick={() => setVehiclePendingDelete(vehicle)}>
                   Delete
                 </button>
               </div>
@@ -238,6 +259,20 @@ export function InventoryPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={vehiclePendingDelete !== null}
+        title="Delete vehicle"
+        message={vehiclePendingDelete ? `Delete ${vehiclePendingDelete.stockCode} - ${vehiclePendingDelete.title}? This cannot be undone.` : ""}
+        confirmLabel="Delete vehicle"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) {
+            setVehiclePendingDelete(null);
+          }
+        }}
+        onConfirm={removeVehicle}
+      />
     </AppShell>
   );
 }

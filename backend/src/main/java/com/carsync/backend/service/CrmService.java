@@ -3,6 +3,7 @@ package com.carsync.backend.service;
 import com.carsync.backend.security.AuthUser;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -46,9 +47,18 @@ public class CrmService {
     return jdbcTemplate.query(
         """
         SELECT l.id, l.source, l.interest, l.status, l.expected_price, l.created_at,
-               c.id AS customer_id, c.name AS customer_name, c.phone AS customer_phone, c.city AS customer_city
+               c.id AS customer_id, c.name AS customer_name, c.phone AS customer_phone, c.city AS customer_city,
+               c.budget_min, c.budget_max,
+               f.title AS follow_up_title, f.due_at AS follow_up_due_at, f.notes AS follow_up_notes
         FROM leads l
         INNER JOIN customers c ON c.id = l.customer_id
+        LEFT JOIN LATERAL (
+          SELECT fu.title, fu.due_at, fu.notes
+          FROM follow_ups fu
+          WHERE fu.tenant_id = l.tenant_id AND fu.lead_id = l.id
+          ORDER BY fu.due_at ASC NULLS LAST, fu.id DESC
+          LIMIT 1
+        ) f ON TRUE
         WHERE l.tenant_id = ?
         ORDER BY l.created_at DESC
         """,
@@ -59,6 +69,11 @@ public class CrmService {
             rs.getString("status"),
             rs.getInt("expected_price"),
             rs.getObject("created_at", LocalDateTime.class),
+            getNullableInteger(rs, "budget_min"),
+            getNullableInteger(rs, "budget_max"),
+            rs.getString("follow_up_title"),
+            rs.getObject("follow_up_due_at", LocalDateTime.class),
+            rs.getString("follow_up_notes"),
             new CustomerSummary(
                 rs.getLong("customer_id"),
                 rs.getString("customer_name"),
@@ -119,12 +134,67 @@ public class CrmService {
 
   @Transactional
   public LeadView updateLead(AuthUser auth, Long leadId, LeadRequest request) {
+    Long customerId = jdbcTemplate.query(
+        "SELECT customer_id FROM leads WHERE id = ? AND tenant_id = ?",
+        rs -> rs.next() ? rs.getLong("customer_id") : null,
+        leadId, auth.tenantId()
+    );
+    if (customerId == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lead not found.");
+    }
+
+    jdbcTemplate.update(
+        """
+        UPDATE customers
+        SET name = ?, phone = ?, city = ?, budget_min = ?, budget_max = ?
+        WHERE id = ? AND tenant_id = ?
+        """,
+        request.customerName(),
+        request.customerPhone(),
+        request.customerCity(),
+        request.budgetMin(),
+        request.budgetMax(),
+        customerId,
+        auth.tenantId()
+    );
+
     int updated = jdbcTemplate.update(
         "UPDATE leads SET source = ?, interest = ?, status = ?, expected_price = ? WHERE id = ? AND tenant_id = ?",
         request.source(), request.interest(),
-        request.status(), request.expectedPrice(),
+        request.status(), request.expectedPrice() != null ? request.expectedPrice() : 0,
         leadId, auth.tenantId()
     );
+
+    if (request.followUpTitle() != null && !request.followUpTitle().isBlank() && request.dueAt() != null) {
+      int followUpUpdated = jdbcTemplate.update(
+          """
+          UPDATE follow_ups
+          SET title = ?, due_at = ?, notes = ?
+          WHERE lead_id = ? AND tenant_id = ?
+          """,
+          request.followUpTitle().trim(),
+          request.dueAt(),
+          blankToNull(request.notes()),
+          leadId,
+          auth.tenantId()
+      );
+
+      if (followUpUpdated == 0) {
+        Long dealershipId = getDefaultDealershipId(auth.tenantId());
+        jdbcTemplate.update(
+            "INSERT INTO follow_ups (tenant_id, dealership_id, customer_id, lead_id, title, due_at, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            auth.tenantId(),
+            dealershipId,
+            customerId,
+            leadId,
+            request.followUpTitle().trim(),
+            request.dueAt(),
+            blankToNull(request.notes()),
+            "PENDING"
+        );
+      }
+    }
+
     if (updated == 0) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lead not found.");
     }
@@ -133,6 +203,25 @@ public class CrmService {
 
   @Transactional
   public void deleteLead(AuthUser auth, Long leadId) {
+    Integer hasBooking = jdbcTemplate.query(
+        "SELECT 1 FROM bookings WHERE tenant_id = ? AND lead_id = ?",
+        rs -> rs.next() ? 1 : null,
+        auth.tenantId(),
+        leadId
+    );
+    if (hasBooking != null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "This lead already has a booking. Remove the booking first before deleting the lead."
+      );
+    }
+
+    jdbcTemplate.update(
+        "DELETE FROM follow_ups WHERE lead_id = ? AND tenant_id = ?",
+        leadId,
+        auth.tenantId()
+    );
+
     int deleted = jdbcTemplate.update(
         "DELETE FROM leads WHERE id = ? AND tenant_id = ?",
         leadId, auth.tenantId()
@@ -146,9 +235,18 @@ public class CrmService {
     return jdbcTemplate.query(
         """
         SELECT l.id, l.source, l.interest, l.status, l.expected_price, l.created_at,
-               c.id AS customer_id, c.name AS customer_name, c.phone AS customer_phone, c.city AS customer_city
+               c.id AS customer_id, c.name AS customer_name, c.phone AS customer_phone, c.city AS customer_city,
+               c.budget_min, c.budget_max,
+               f.title AS follow_up_title, f.due_at AS follow_up_due_at, f.notes AS follow_up_notes
         FROM leads l
         INNER JOIN customers c ON c.id = l.customer_id
+        LEFT JOIN LATERAL (
+          SELECT fu.title, fu.due_at, fu.notes
+          FROM follow_ups fu
+          WHERE fu.tenant_id = l.tenant_id AND fu.lead_id = l.id
+          ORDER BY fu.due_at ASC NULLS LAST, fu.id DESC
+          LIMIT 1
+        ) f ON TRUE
         WHERE l.tenant_id = ? AND l.id = ?
         """,
         rs -> rs.next() ? new LeadView(
@@ -158,6 +256,11 @@ public class CrmService {
             rs.getString("status"),
             rs.getInt("expected_price"),
             rs.getObject("created_at", LocalDateTime.class),
+            getNullableInteger(rs, "budget_min"),
+            getNullableInteger(rs, "budget_max"),
+            rs.getString("follow_up_title"),
+            rs.getObject("follow_up_due_at", LocalDateTime.class),
+            rs.getString("follow_up_notes"),
             new CustomerSummary(
                 rs.getLong("customer_id"),
                 rs.getString("customer_name"),
@@ -469,6 +572,11 @@ public class CrmService {
     return result != null ? result : 0;
   }
 
+  private Integer getNullableInteger(java.sql.ResultSet rs, String columnLabel) throws java.sql.SQLException {
+    int value = rs.getInt(columnLabel);
+    return rs.wasNull() ? null : value;
+  }
+
   private Long getDefaultDealershipId(Long tenantId) {
     Long id = jdbcTemplate.query(
         "SELECT id FROM dealerships WHERE tenant_id = ? ORDER BY id ASC LIMIT 1",
@@ -543,7 +651,9 @@ public class CrmService {
 
   public record LeadRequest(
       @NotBlank(message = "Customer name is required.") String customerName,
-      @NotBlank(message = "Customer phone is required.") String customerPhone,
+      @NotBlank(message = "Customer phone is required.")
+      @Pattern(regexp = "\\d{10}", message = "Customer phone must be exactly 10 digits.")
+      String customerPhone,
       String customerCity,
       Integer budgetMin,
       Integer budgetMax,
@@ -563,6 +673,11 @@ public class CrmService {
       String status,
       int expectedPrice,
       LocalDateTime createdAt,
+      Integer budgetMin,
+      Integer budgetMax,
+      String followUpTitle,
+      LocalDateTime dueAt,
+      String notes,
       CustomerSummary customer
   ) {}
 

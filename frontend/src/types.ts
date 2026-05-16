@@ -30,6 +30,10 @@ export type Lead = {
   budgetMin?: number;
   budgetMax?: number;
   expectedPrice?: number;
+  createdAt?: string;
+  followUpTitle?: string;
+  dueAt?: string;
+  notes?: string;
 };
 
 export type Vehicle = {
@@ -53,6 +57,7 @@ export type FollowUp = {
   id: number;
   title: string;
   customerName: string;
+  dueAt?: string;
   dueLabel: string;
   notes: string;
   status: string;

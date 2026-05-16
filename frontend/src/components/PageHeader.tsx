@@ -1,17 +1,17 @@
 type PageHeaderProps = {
   title: string;
+  subtitle?: string;
 
   sideLabel?: string;
   sideValue?: string;
 };
 
-export function PageHeader({ title, sideLabel, sideValue }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, sideLabel, sideValue }: PageHeaderProps) {
   return (
     <header className="page-header">
       <div>
-      
         <h2>{title}</h2>
-       
+        {subtitle ? <p className="lead-copy">{subtitle}</p> : null}
       </div>
 
       {sideLabel && sideValue ? (

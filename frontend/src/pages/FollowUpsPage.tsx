@@ -16,7 +16,7 @@ export function FollowUpsPage() {
     <AppShell>
       <PageHeader
         title="Follow-ups"
-        
+        subtitle="Track promises made to buyers and keep every pending conversation visible to the team."
       />
       {error ? <div className="error-banner">{error}</div> : null}
       <section className="panel">

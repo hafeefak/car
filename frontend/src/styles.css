@@ -487,6 +487,12 @@ textarea {
   padding: 0.9rem 1rem;
   border-radius: 18px;
 }
+
+.confirm-copy {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
 /* ===== MODAL ENHANCEMENTS ===== */
 
 /* Modal size variants */
@@ -876,4 +882,3 @@ textarea {
   background-clip: text;
   -webkit-background-clip: text;
 }   
-

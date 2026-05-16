@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { InputField, SelectField, TextareaField } from "../components/FormField";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
@@ -25,17 +26,30 @@ const defaultLeadForm = (): LeadPayload => ({
 export function LeadsPage() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [inventoryInterests, setInventoryInterests] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<LeadPayload>(defaultLeadForm());
+  const [customInterest, setCustomInterest] = useState("");
+  const [leadPendingDelete, setLeadPendingDelete] = useState<Lead | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const load = async () => {
-    const [snapshotData, leadData] = await Promise.all([api.snapshot(), api.leads()]);
+    const [snapshotData, leadData, vehicleData] = await Promise.all([api.snapshot(), api.leads(), api.vehicles()]);
     setSnapshot(snapshotData);
     setLeads(leadData);
+    setInventoryInterests(
+      Array.from(
+        new Set(
+          vehicleData
+            .map((vehicle) => vehicle.title.trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b))
+    );
   };
 
   useEffect(() => {
@@ -53,39 +67,63 @@ export function LeadsPage() {
   useEffect(() => {
     if (!selectedLead) {
       setForm(defaultLeadForm());
+      setCustomInterest("");
       return;
     }
+
+    const useCustomInterest =
+      selectedLead.interest !== "Other" && !inventoryInterests.includes(selectedLead.interest);
 
     setForm({
       customerName: selectedLead.customerName,
       phone: selectedLead.phone,
       city: selectedLead.city,
       source: selectedLead.source,
-      interest: selectedLead.interest,
+      interest: useCustomInterest ? "Other" : selectedLead.interest,
       status: selectedLead.rawStatus,
       budgetMin: selectedLead.budgetMin,
       budgetMax: selectedLead.budgetMax,
-      followUpTitle: "",
-      dueAt: "",
-      notes: ""
+      followUpTitle: selectedLead.followUpTitle ?? "",
+      dueAt: selectedLead.dueAt ?? "",
+      notes: selectedLead.notes ?? ""
     });
-  }, [selectedLead]);
+    setCustomInterest(useCustomInterest ? selectedLead.interest : "");
+  }, [inventoryInterests, selectedLead]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (!/^\d{10}$/.test(phoneDigits)) {
+      setError("Phone number must be exactly 10 digits.");
+      return;
+    }
+
+    const resolvedInterest = (form.interest === "Other" ? customInterest : form.interest).trim();
+    if (!resolvedInterest) {
+      setError("Vehicle interest is required.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     try {
+      const payload = {
+        ...form,
+        phone: phoneDigits,
+        interest: resolvedInterest
+      };
+
       if (selectedLead) {
-        await api.updateLead(selectedLead.id, form);
+        await api.updateLead(selectedLead.id, payload);
       } else {
-        await api.createLead(form);
+        await api.createLead(payload);
       }
 
       setSelectedLead(null);
       setModalOpen(false);
       setForm(defaultLeadForm());
+      setCustomInterest("");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lead save failed.");
@@ -97,6 +135,7 @@ export function LeadsPage() {
   const openCreateModal = () => {
     setSelectedLead(null);
     setForm(defaultLeadForm());
+    setCustomInterest("");
     setModalOpen(true);
   };
 
@@ -113,21 +152,26 @@ export function LeadsPage() {
     setSelectedLead(null);
     setModalOpen(false);
     setForm(defaultLeadForm());
+    setCustomInterest("");
   };
 
-  const removeLead = async (leadId: number) => {
-    if (!window.confirm("Delete this lead?")) {
+  const removeLead = async () => {
+    if (!leadPendingDelete) {
       return;
     }
 
+    setDeleting(true);
     try {
-      await api.deleteLead(leadId);
-      if (selectedLead?.id === leadId) {
+      await api.deleteLead(leadPendingDelete.id);
+      if (selectedLead?.id === leadPendingDelete.id) {
         setSelectedLead(null);
       }
+      setLeadPendingDelete(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -135,7 +179,8 @@ export function LeadsPage() {
     <AppShell>
       <PageHeader
         title="Leads"
-        
+        subtitle="Manage the full sales pipeline, adjust customer budgets, and keep follow-up commitments current."
+        sideLabel="Lead desk"
         sideValue={`${snapshot?.stats[0]?.value ?? "0"} open leads`}
       />
       {snapshot ? <StatGrid stats={snapshot.stats} /> : null}
@@ -164,12 +209,16 @@ export function LeadsPage() {
                 <span className="badge">{lead.status}</span>
               </div>
               <div>{lead.source}</div>
-              <div>{lead.budget}</div>
+              <div>
+                <strong>{lead.budget}</strong>
+                <p>Min: {lead.budgetMin?.toLocaleString("en-IN") ?? "-"}</p>
+                <p>Max: {lead.budgetMax?.toLocaleString("en-IN") ?? "-"}</p>
+              </div>
               <div className="row-actions">
                 <button className="ghost-button" type="button" onClick={() => openEditModal(lead)}>
                   Edit
                 </button>
-                <button className="ghost-button danger" type="button" onClick={() => removeLead(lead.id)}>
+                <button className="ghost-button danger" type="button" onClick={() => setLeadPendingDelete(lead)}>
                   Delete
                 </button>
               </div>
@@ -200,9 +249,41 @@ export function LeadsPage() {
         <form className="modal-form" id="lead-modal-form" onSubmit={submit}>
           <div className="form-grid">
             <InputField label="Customer name" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} required />
-            <InputField label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+            <InputField
+              label="Phone"
+              value={form.phone}
+              inputMode="numeric"
+              maxLength={10}
+              pattern="\d{10}"
+              placeholder="10 digit mobile number"
+              onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+              required
+            />
             <InputField label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-            <InputField label="Vehicle interest" value={form.interest} onChange={(e) => setForm({ ...form, interest: e.target.value })} required />
+            <label className="field">
+              <span>Vehicle interest</span>
+              <input
+                list="inventory-interest-options"
+                value={form.interest}
+                placeholder="Search inventory or choose Other"
+                onChange={(e) => setForm({ ...form, interest: e.target.value })}
+                required
+              />
+              <datalist id="inventory-interest-options">
+                {inventoryInterests.map((interest) => (
+                  <option key={interest} value={interest} />
+                ))}
+                <option value="Other" />
+              </datalist>
+              {form.interest === "Other" ? (
+                <input
+                  value={customInterest}
+                  placeholder="Type requested vehicle, e.g. i20"
+                  onChange={(e) => setCustomInterest(e.target.value)}
+                  autoFocus
+                />
+              ) : null}
+            </label>
             <InputField label="Min budget" type="number" value={form.budgetMin ?? ""} onChange={(e) => setForm({ ...form, budgetMin: e.target.value ? Number(e.target.value) : undefined })} />
             <InputField label="Max budget" type="number" value={form.budgetMax ?? ""} onChange={(e) => setForm({ ...form, budgetMax: e.target.value ? Number(e.target.value) : undefined })} />
             <SelectField label="Lead source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}>
@@ -225,6 +306,20 @@ export function LeadsPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={leadPendingDelete !== null}
+        title="Delete lead"
+        message={leadPendingDelete ? `Delete ${leadPendingDelete.customerName}'s lead? This cannot be undone.` : ""}
+        confirmLabel="Delete lead"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) {
+            setLeadPendingDelete(null);
+          }
+        }}
+        onConfirm={removeLead}
+      />
     </AppShell>
   );
 }

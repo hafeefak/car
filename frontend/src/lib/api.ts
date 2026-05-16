@@ -18,6 +18,12 @@ type RawLead = {
   interest: string;
   status: string;
   expectedPrice: number;
+  createdAt: string;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  followUpTitle: string | null;
+  dueAt: string | null;
+  notes: string | null;
   customer: {
     name: string;
     phone: string;
@@ -134,6 +140,21 @@ function formatDeliveryLabel(value: string) {
   }).format(date);
 }
 
+function formatDateTimeLocalValue(value: string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    const offset = date.getTimezoneOffset();
+    const normalized = new Date(date.getTime() - offset * 60_000);
+    return normalized.toISOString().slice(0, 16);
+  }
+
+  return value.slice(0, 16);
+}
+
 function mapLead(lead: RawLead): Lead {
   return {
     id: lead.id,
@@ -145,9 +166,13 @@ function mapLead(lead: RawLead): Lead {
     rawStatus: lead.status,
     city: lead.customer.city ?? "-",
     budget: formatAmount(lead.expectedPrice),
-    budgetMin: undefined,
-    budgetMax: undefined,
-    expectedPrice: lead.expectedPrice
+    budgetMin: lead.budgetMin ?? undefined,
+    budgetMax: lead.budgetMax ?? undefined,
+    expectedPrice: lead.expectedPrice,
+    createdAt: lead.createdAt,
+    followUpTitle: lead.followUpTitle ?? undefined,
+    dueAt: formatDateTimeLocalValue(lead.dueAt),
+    notes: lead.notes ?? undefined
   };
 }
 
@@ -175,6 +200,7 @@ function mapFollowUp(followUp: RawFollowUp): FollowUp {
     id: followUp.id,
     title: followUp.title,
     customerName: followUp.customer.name,
+    dueAt: followUp.dueAt,
     dueLabel: formatDueLabel(followUp.dueAt),
     notes: followUp.notes ?? "",
     status: formatStatus(followUp.status),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { AuthShowcase } from "../components/AuthShowcase";
 
 export function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -40,45 +41,53 @@ export function LoginPage() {
 
   return (
     <div className="auth-screen">
-      <form className="auth-card" onSubmit={onSubmit} autoComplete="off">
-        <h1>CarSync</h1>
+      <div className="auth-layout">
+        <AuthShowcase
+          title="Close more dealership deals with less chaos"
+          body="CarSync gives your team one place to capture leads, manage follow-ups, match customer demand with inventory, and convert interest into bookings without losing track of the sales journey."
+          primaryLabel="Create account"
+          primaryTo="/register"
+          secondaryLabel="Request demo"
+          secondaryTo="/login#demo-request"
+        />
+        <form className="auth-card auth-card-login" onSubmit={onSubmit} autoComplete="off">
+          <h1>CarSync</h1>
 
-        {error && <div className="error-banner">{error}</div>}
+          {error && <div className="error-banner">{error}</div>}
 
-        <label className="field">
-          <span>Email</span>
-          <input
-            type="email"
-              
+          <label className="field">
+            <span>Email</span>
+            <input
+              className="auth-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="new-email"
+              required
+            />
+          </label>
 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          
-            autoComplete="new-email"
-            required
-          />
-        </label>
+          <label className="field">
+            <span>Password</span>
+            <input
+              className="auth-input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+          </label>
 
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-           
-            autoComplete="new-password"
-            required
-          />
-        </label>
+          <button className="auth-submit-button" type="submit" disabled={saving}>
+            {saving ? "Signing in..." : "Login"}
+          </button>
 
-        <button className="primary-button " type="submit" disabled={saving}>
-          {saving ? "Signing in..." : "Login"}
-        </button>
-
-        <p className="muted">
-          New to CarSync? <Link to="/register">Create an account</Link>
-        </p>
-      </form>
+          <p className="muted">
+            New to CarSync? <Link to="/register">Create an account</Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

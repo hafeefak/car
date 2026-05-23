@@ -126,6 +126,54 @@ docker compose -f docker-compose.prod.yml --env-file .env down
 - The frontend container serves the built app through Nginx
 - The backend is not exposed publicly in the compose file; the frontend proxies requests to it
 
+### Redeploy On An Existing Oracle VM
+
+If CarSync is already running on your Oracle instance, you do not need to create a new server.
+Just pull the latest code and rebuild the existing Docker stack.
+
+1. SSH into the Oracle VM
+
+```bash
+ssh -i /path/to/your-private-key ubuntu@YOUR_SERVER_IP
+```
+
+2. Go to the deployed app folder
+
+```bash
+cd /opt/carsync
+```
+
+3. Pull the latest code
+
+```bash
+git pull origin main
+```
+
+4. Rebuild and restart the stack
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up --build -d
+```
+
+5. Check that containers are running
+
+```bash
+docker ps
+```
+
+6. If needed, inspect logs
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env logs -f
+```
+
+Important notes:
+
+- keep the existing `.env` file on the server
+- do not use `docker compose down -v`
+- PostgreSQL data stays safe as long as the Docker volume is preserved
+- this process updates the running app on the same Oracle VM
+
 ## Manual Local Run
 
 Start PostgreSQL:
@@ -329,6 +377,10 @@ Demo seed note:
 - Existing seeded bookings in an older local database may not yet carry `lead_id` until the database is refreshed or reseeded
 
 ## Customer Pitch
+
+Reusable sales copy now lives here:
+
+- [SALES_PITCH.md](</C:/SHANID/business project/carSync/carsync-app/SALES_PITCH.md>)
 
 CarSync helps used-car dealers turn scattered lead handling into a clear sales workflow.
 
